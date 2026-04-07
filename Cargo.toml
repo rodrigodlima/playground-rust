@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "hello-world",
+    "segment-tree",
+]
+resolver = "2"
