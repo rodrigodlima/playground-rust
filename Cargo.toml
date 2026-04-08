@@ -1,6 +1,6 @@
 [workspace]
 members = [
     "hello-world",
-    "segment-tree",
+    "segment-tree", "struct-sum-example",
 ]
 resolver = "2"
