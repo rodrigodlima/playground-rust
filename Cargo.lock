@@ -13,3 +13,7 @@ version = "0.1.0"
 [[package]]
 name = "struct-sum-example"
 version = "0.1.0"
+
+[[package]]
+name = "variables-and-data-types"
+version = "0.1.0"
