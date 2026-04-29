@@ -1,5 +1,5 @@
 [workspace]
-members = [
+members = ["debug-formater",
     "hello-world",
     "segment-tree", "struct-sum-example", "variables-and-data-types",
 ]
