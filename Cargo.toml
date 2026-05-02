@@ -1,6 +1,6 @@
 [workspace]
 members = ["borrowing","debug-formater",
     "hello-world",
-    "segment-tree", "struct-sum-example", "variables-and-data-types",
+    "segment-tree", "struct-sum-example", "tests", "variables-and-data-types",
 ]
 resolver = "2"
