@@ -6,4 +6,9 @@ pub struct SegmentTree<T: Clone> {
     merge: fn(&T, &T) -> T,
 }
 
+impl <T: Clone> SegmentTree<T> {
+    new(n, identity, merge)
+    
+}
+
 
