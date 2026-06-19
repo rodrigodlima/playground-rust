@@ -19,16 +19,42 @@ Agora vamos descer pelo arquivo e ver isso virar código.
 
 ---
 
-## 1. A estrutura da árvore — `struct SegmentTree` (topo do arquivo)
+## 1. O dado do domínio — `struct LoanContract` (topo do arquivo)
 
-A primeira coisa no arquivo é a árvore. Por dentro, ela é **um único array** chamado `tree`:
+A primeira coisa no arquivo é o que tudo gira em torno: o contrato. Quatro campos:
+
+```rust
+#[derive(Clone)]
+struct LoanContract {
+    contract_id:    u32,     // id do contrato
+    borrower:       String,  // nome do cliente
+    amount:         f64,     // valor emprestado
+    days_remaining: i32,     // dias até vencer
+}
+```
+
+Logo abaixo, um construtor (`impl LoanContract`) que monta um contrato a partir dos campos:
+
+```rust
+impl LoanContract {
+    fn new(contract_id: u32, borrower: &str, amount: f64, days_remaining: i32) -> Self { ... }
+}
+```
+
+> `#[derive(Clone)]` = "esse contrato sabe se copiar". A árvore vai exigir isso (ela copia valores ao combinar pedaços).
+
+---
+
+## 2. A estrutura da árvore — `struct SegmentTree` + `impl`
+
+Depois do dado, vem a árvore. Por dentro, ela é **um único array** chamado `tree`:
 
 ```rust
 struct SegmentTree<T: Clone> {
     tree:    Vec<T>,          // <- AQUI moram os dados + os resumos
     n:       usize,           // quantos contratos
-    neutral: T,               // o "valor vazio" (explico na parte 5)
-    merge:   fn(&T, &T) -> T, // a regra de combinar dois itens (parte 5)
+    neutral: T,               // o "valor vazio" (explico na parte 4)
+    merge:   fn(&T, &T) -> T, // a regra de combinar dois itens (parte 4)
 }
 ```
 
@@ -46,29 +72,27 @@ A sacada: a árvore não guarda só os 8 contratos. Guarda também **resumos** d
 
 Cada caixa de cima é o resultado de **combinar** (`merge`) as duas de baixo. Tudo isso mora no array `tree`: o filho esquerdo de um nó fica em `2*node`, o direito em `2*node+1`.
 
-> Por enquanto, `neutral` e `merge` são "configurações" que recebemos de fora. Voltamos a eles na parte 5.
+> O `<T: Clone>` torna a árvore **genérica**: serve pra qualquer tipo (contrato, `f64`...), desde que saiba se clonar.
 
----
+### As operações — o bloco `impl`
 
-## 2. As operações da árvore — o bloco `impl`
+São 3 ações principais.
 
-Logo abaixo vem o `impl`: tudo que se faz com a árvore. São 3 ações principais.
-
-### 🔨 Montar a carteira — `new` + `build`
+#### 🔨 Montar a carteira — `new` + `build`
 
 Criar a árvore monta os resumos **uma vez**:
 
 ```rust
 fn new(data: Vec<T>, neutral: T, merge: fn(&T, &T) -> T) -> Self {
     let n = data.len();
-    let tree = vec![neutral.clone(); 4 * n]; // reserva espaço
+    let tree = vec![neutral.clone(); 4 * n]; // reserva espaço (4*n é o teto seguro)
     let mut st = SegmentTree { tree, n, neutral, merge };
     if n > 0 { st.build(&data, 1, 0, n - 1); } // preenche a árvore
     st
 }
 ```
 
-`build` preenche de baixo pra cima: cada contrato vira uma folha, e vai combinando até o topo:
+`build` preenche de baixo pra cima: cada contrato vira folha, e vai combinando até o topo:
 
 ```rust
 fn build(&mut self, data, node, start, end) {
@@ -85,7 +109,7 @@ fn build(&mut self, data, node, start, end) {
 
 > Pague esse custo **uma vez** na montagem. Depois, toda pergunta é barata.
 
-### 🔍 Consultar — `query` + `query_range`
+#### 🔍 Consultar — `query` + `query_range`
 
 Quer a resposta de um intervalo? `query(início, fim)`:
 
@@ -109,7 +133,7 @@ fn query_range(&self, node, start, end, l, r) -> T {
 
 > Cortar galhos inteiros = consulta rápida mesmo com milhões de contratos.
 
-### ✏️ Atualizar — `update` + `update_range`
+#### ✏️ Atualizar — `update` + `update_range`
 
 A Eve renegociou. Troca o contrato dela (índice 4):
 
@@ -133,7 +157,7 @@ fn update_range(&mut self, node, start, end, pos, value) {
 
 > Atualizar um contrato **não** recalcula a carteira inteira. Só o caminho dele até o topo.
 
-### Atalhos — `root` e `len`
+#### Atalhos — `root` e `len`
 
 ```rust
 fn root(&self) -> T { self.tree[1].clone() } // resumo do topo = resposta da carteira inteira
@@ -142,25 +166,7 @@ fn len(&self)  -> usize { self.n }            // quantos contratos
 
 ---
 
-## 3. O dado do domínio — `struct LoanContract`
-
-Depois da árvore (que é genérica), vem o que ela guarda no nosso caso: o contrato.
-
-```rust
-#[derive(Clone)]
-struct LoanContract {
-    contract_id:    u32,     // id do contrato
-    borrower:       String,  // nome do cliente
-    amount:         f64,     // valor emprestado
-    days_remaining: i32,     // dias até vencer
-}
-```
-
-E um construtor logo abaixo (`impl LoanContract`) que monta um contrato a partir dos campos.
-
----
-
-## 4. A carteira inicial — `init_contracts`
+## 3. A carteira inicial — `init_contracts`
 
 A lista dos 8 contratos de exemplo:
 
@@ -189,7 +195,7 @@ fn init_contracts() -> Vec<LoanContract> {
 
 ---
 
-## 5. O truque que amarra tudo — as funções `merge` + `neutral`
+## 4. O truque que amarra tudo — as funções `merge` + `neutral`
 
 Aqui se resolve o suspense das partes 1 e 2. A **mesma árvore** responde perguntas diferentes — só muda a regra de combinar (`merge`) e o valor vazio (`neutral`):
 
@@ -219,29 +225,45 @@ E o `neutral`? É o "valor vazio" devolvido para pedaços fora da pergunta, esco
 
 ---
 
-## 6. Juntando tudo — `run` (a demo)
+## 5. Juntando tudo — `run` (a demo completa)
 
-No fim do arquivo, `run` mostra as peças trabalhando juntas:
+No fim do arquivo, `run` mostra **todas as perguntas** trabalhando juntas. Ele monta uma árvore por estratégia e imprime cada resposta:
 
 ```rust
 pub fn run() {
-    let urgent_tree = SegmentTree::new(
-        init_contracts(),   // os dados (parte 4)
-        neutral_urgent(),   // o vazio  (parte 5)
-        merge_urgent,       // a regra  (parte 5)
-    );
-    let most_urgent = urgent_tree.root(); // resumo do topo (parte 2)
-    println!("Most urgent contract => id={}, ...", most_urgent.contract_id);
+    // 1. mais urgente (toda a carteira)
+    let urgent_tree = SegmentTree::new(init_contracts(), neutral_urgent(), merge_urgent);
+    println!("Most urgent => {}", urgent_tree.root().borrower); // Eve
+
+    // 2. mais folga | 3. menor valor | 4. maior valor — mesma ideia, só trocando merge/neutral
+    let slack_tree   = SegmentTree::new(init_contracts(), neutral_slack(),   merge_slack);
+    let lowest_tree  = SegmentTree::new(init_contracts(), neutral_lowest(),  merge_lowest);
+    let highest_tree = SegmentTree::new(init_contracts(), neutral_highest(), merge_highest);
+
+    // 5. consulta por intervalo — mais urgente só na primeira metade [0..3]
+    let first_half = urgent_tree.query(0, 3); // Bob
+
+    // 6. update — Eve renegocia (2 -> 90 dias), o topo muda
+    let mut t = SegmentTree::new(init_contracts(), neutral_urgent(), merge_urgent);
+    t.update(4, LoanContract::new(5, "Eve", 1500.0, 90)); // agora o mais urgente é o Bob
+
+    // 7. soma da carteira (árvore de f64), e soma após pagamento parcial
+    let amounts: Vec<f64> = init_contracts().iter().map(|c| c.amount).collect();
+    let mut sum_tree = SegmentTree::new(amounts, 0.0, merge_f64_sum);
+    println!("Total = {}", sum_tree.root()); // 51 800
+    sum_tree.update(4, 500.0);                // Eve paga, total cai
 }
 ```
 
+Repare: **as 7 demos usam a mesma `SegmentTree`** — só trocam o par `(neutral, merge)` ou chamam `query`/`update`. É a prova viva do truque da parte 4.
+
 ```bash
-cargo run    # imprime: Most urgent contract => id=5, borrower=Eve, days_remaining=2
+cargo run    # imprime as 7 seções: urgência, folga, menor, maior, query, update, soma
 ```
 
 ---
 
-## 7. As provas — os testes (`mod tests`)
+## 6. As provas — os testes (`mod tests`)
 
 Por último, os testes provam cada pergunta da história. O mais legal:
 
@@ -265,9 +287,10 @@ cargo test   # roda todos os testes que provam cada pergunta
 
 ## Fechando
 
+- **Contrato** (`LoanContract`) = o dado.
 - **Árvore** (`SegmentTree`) = array que guarda os dados **e resumos prontos** de cada pedaço.
 - **3 ações:** montar (`build`, uma vez), consultar (`query`, rápido), atualizar (`update`, rápido).
-- **`merge` plugável** faz a mesma árvore responder mil perguntas.
+- **`merge` plugável** faz a mesma árvore responder mil perguntas (a demo `run` mostra 7).
 
 **Por que não um `for` simples?** Com 8 contratos, tanto faz. Com milhões + muitas perguntas por dia + atualizações constantes, o `for` percorre tudo toda vez e não escala. A árvore mantém tudo rápido.
 
